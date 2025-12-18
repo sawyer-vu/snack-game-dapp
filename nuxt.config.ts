@@ -33,4 +33,10 @@ export default defineNuxtConfig({
   pinia: {
     storesDirs: ["./stores/**"],
   },
+
+  runtimeConfig: {
+    public: {
+      ogmiosEndpoint: process.env.NUXT_OGMIOS_ENDPOINT || "",
+    },
+  },
 });

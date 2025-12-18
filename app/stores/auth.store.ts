@@ -68,6 +68,7 @@ export const useAuthStore = defineStore("auth", () => {
     });
 
     const account = walletInstance.getAccount(0, 0);
+    console.log("Account Base Address:", account.baseAddressBech32);
 
     wallet.value = {
       secrets: {
