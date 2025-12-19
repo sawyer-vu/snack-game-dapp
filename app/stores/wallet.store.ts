@@ -1,16 +1,11 @@
-import {
-  type AppWallet,
-  DEFAULT_PROTOCOL_PARAMETERS,
-  type Account,
-  type UTxO,
-  type UTxOObject,
-} from "@hydra-sdk/core";
+import { type AppWallet, type Account, type UTxOObject } from "@hydra-sdk/core";
+import { TxBuilder } from "@hydra-sdk/transaction";
 
 export const useWalletStore = defineStore("wallet", () => {
   const wallet = ref<AppWallet | null>(null);
   const account = ref<Account | null>(null);
+  const snapshotUtxo = ref<any>();
   const utxos = ref<UTxOObject[]>([]);
-  const { $ws } = useNuxtApp();
 
   const setWallet = (appWallet: AppWallet) => {
     wallet.value = appWallet;
@@ -20,57 +15,83 @@ export const useWalletStore = defineStore("wallet", () => {
     account.value = acc;
   };
 
-  const fetchAddressUtxos = async (address: string) => {
+  const fetchAddressUtxos = async () => {
     if (!wallet.value) return;
 
-    const requestId = Date.now();
+    const utxoResult = getUtxos(
+      snapshotUtxo.value,
+      account.value?.baseAddressBech32!
+    );
 
-    // Đăng ký handler trước khi send
-    const unsubscribe = $ws.on("message", (data) => {
-      // Kiểm tra đúng response cho request này
-      if (data.id === requestId) {
-        console.log("UTXO response:", data);
+    console.log("Found UTxO for current address:", utxoResult);
 
-        if (data.result) {
-          // Xử lý kết quả
-          const utxos = data.result;
-          console.log("UTXOs:", utxos);
-        }
+    if (utxoResult.length === 0) {
+      buildTx();
+    }
+  };
 
-        if (data.error) {
-          console.error("Error:", data.error);
-        }
-
-        // Hủy đăng ký sau khi nhận được response
-        unsubscribe();
-      }
+  const buildTx = async () => {
+    if (!wallet.value || !account.value) return;
+    console.log("Building transaction...");
+    // Example logic to build a transaction
+    const txBuilder = new TxBuilder({
+      isHydra: true,
     });
 
-    // Gửi request
-    await $ws.send(
-      "message",
+    const utxoParticipant = getUtxos(
+      snapshotUtxo.value,
+      "addr_test1qrnp9693dzwgyl947v8sm9j7c5dpfcm3j7h2jqpp2vze068m2tj5pxcfzr5zvjemqlmu2kvac6t7ruvc4m9kg9324ntqv0e30n"
+    );
+
+    const txOutputs = [
       {
-        jsonrpc: "2.0",
-        method: "queryLedgerState/utxo",
-        params: {
-          addresses: [address],
-        },
-        id: requestId,
+        address: account.value?.baseAddressBech32,
+        amount: [
+          {
+            unit: "lovelace",
+            quantity: "1000000",
+          },
+        ],
       },
-      { waitForConnection: true }
+    ];
+
+    const txInputs = [
+      {
+        input: {
+          outputIndex: 312312,
+          txHash: "",
+        },
+        output: {
+          address: account.value?.baseAddressBech32,
+          amount: [
+            {
+              unit: "lovelace",
+              quantity: "1000000",
+            },
+          ],
+        },
+      },
+    ];
+
+    console.log("UTxOs for building transaction:", utxoParticipant);
+  };
+
+  const getUtxos = (snapshotUtxo: any, address: string) => {
+    return Object.values(snapshotUtxo).filter(
+      (utxo: any) => utxo.address === address
     );
   };
 
   const reset = () => {
     wallet.value = null;
     account.value = null;
-    utxos.value = [];
+    snapshotUtxo.value = [];
   };
 
   return {
     wallet,
     account,
-    utxos,
+    snapshotUtxo,
     setWallet,
     setAccount,
     fetchAddressUtxos,

@@ -36,7 +36,11 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      ogmiosEndpoint: process.env.NUXT_OGMIOS_ENDPOINT || "",
+      wssEndpoint:
+        process.env.NUXT_PUBLIC_WSS_ENDPOINT || "ws://localhost:3000",
+      httpsEndpoint:
+        process.env.NUXT_PUBLIC_HTTPS_ENDPOINT || "http://localhost:3000",
+      blockfrostApiKey: process.env.NUXT_PUBLIC_BLOCKFROST_API_KEY || "",
     },
   },
 });

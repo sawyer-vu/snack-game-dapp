@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { AppWallet, EmbeddedWallet, NETWORK_ID } from "@hydra-sdk/core";
+import { HydraBridge } from "@hydra-sdk/bridge";
 
 const authStore = useAuthStore();
 const walletStore = useWalletStore();
@@ -26,9 +27,21 @@ onBeforeMount(async () => {
       );
       const account = walletStore.wallet!.getAccount(0, 0);
       walletStore.setAccount(account);
-      // await walletStore.fetchAddressUtxos(account.baseAddressBech32);
+      await walletStore.fetchAddressUtxos();
     }
   }
+});
+
+onMounted(async () => {
+  // const bridge = new HydraBridge({
+  //   url: useRuntimeConfig().public.wssEndpoint,
+  //   // verbose: true,
+  // });
+  // console.log("Connecting to Hydra Bridge...", bridge);
+  // await bridge.connect();
+  // const utxoSnapshot = await bridge.querySnapshotUtxo();
+
+  // console.log("Snapshot UTxO from Hydra Bridge:", utxoSnapshot);
 });
 </script>
 

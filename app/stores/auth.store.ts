@@ -97,5 +97,6 @@ export const useAuthStore = defineStore("auth", () => {
     wallet,
     isAuthenticated,
     signIn,
+    signOut,
   };
 });
