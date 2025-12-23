@@ -96,5 +96,6 @@ export const useWalletStore = defineStore("wallet", () => {
     setAccount,
     fetchAddressUtxos,
     reset,
+    getUtxos,
   };
 });

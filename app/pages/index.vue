@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useAuthStore } from "@/stores/auth.store";
+import { TxBuilder } from "@hydra-sdk/transaction";
+import { CardanoWASM } from "@hydra-sdk/cardano-wasm";
+import { DatumUtils, ParserUtils, Resolver } from "@hydra-sdk/core";
 
+const walletStore = useWalletStore();
+const { $bridge } = useNuxtApp();
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -374,6 +379,178 @@ watch(gridSize, () => {
   const ctx = canvas.value?.getContext("2d");
   if (ctx) render(ctx);
 });
+
+watch(
+  () => gameOver.value,
+  async (newVal) => {
+    if (newVal) {
+      try {
+        if (!$bridge?.connected()) {
+          console.error("Hydra Bridge is not available");
+          return;
+        }
+
+        if (!walletStore.account || !walletStore.wallet) {
+          console.error("Wallet account is not available");
+          return;
+        }
+
+        const addressUtxos = await $bridge.queryAddressUTxO(
+          walletStore.account!.baseAddressBech32
+        );
+        console.log("Address UTxOs at game over:", addressUtxos);
+
+        const scriptUtxos = await $bridge.queryAddressUTxO(
+          useRuntimeConfig().public.scriptAddress
+        );
+
+        console.log("Script UTxOs at game over:", scriptUtxos);
+
+        const scriptUtxoPlayer = scriptUtxos.find((utxo: any) => {
+          console.log(
+            "Checking UTxO inline datum:",
+            walletStore.account!.paymentKeyHex,
+            JSON.parse(utxo.output.inlineDatum.to_json(DatumUtils.DatumSchema.Basic))
+          );
+          const datumJson = utxo.output.inlineDatum
+            ? JSON.parse(utxo.output.inlineDatum.to_json())
+            : null;
+          return (
+            datumJson &&
+            datumJson.fields[0] === `${walletStore.account!.paymentKeyHex}`
+          );
+        });
+
+        console.log("Script UTxO for player at game over:", scriptUtxoPlayer);
+
+        const txBuilder = new TxBuilder({
+          isHydra: true,
+          params: {
+            minFeeA: 0,
+            minFeeB: 0,
+          },
+        });
+
+        const inlineDatum = DatumUtils.mkConstr(0, [
+          DatumUtils.mkBytes(
+            ParserUtils.stringToHex(walletStore.account!.paymentKeyHex)
+          ), // owner luôn từ wallet (hex→bytes)
+          DatumUtils.mkBytes(ParserUtils.stringToHex("VU QUOC HUY")),
+          DatumUtils.mkInt(score.value),
+          DatumUtils.mkInt(1),
+        ]);
+
+        if (!scriptUtxoPlayer) {
+          txBuilder.setInputs(addressUtxos);
+          txBuilder.addOutput({
+            address: useRuntimeConfig().public.scriptAddress,
+            amount: [
+              {
+                unit: "lovelace",
+                quantity: "5000000",
+              },
+            ],
+          });
+          txBuilder
+            .txOutInlineDatumValue(inlineDatum)
+            .changeAddress(walletStore.account!.baseAddressBech32)
+            .setFee("0");
+
+          const tx = await txBuilder.complete();
+          const cborHex = tx.to_hex();
+          const signedCborHex = await walletStore.wallet?.signTx(cborHex);
+          const txId = Resolver.resolveTxHash(tx.to_hex());
+
+          console.log("Submitting tx to Hydra Bridge:", signedCborHex);
+
+          const result = await $bridge.submitTxSync(
+            {
+              type: "Witnessed Tx ConwayEra",
+              description: "Ledger Cddl Format",
+              cborHex: signedCborHex,
+              txId: txId,
+            },
+            { timeout: 30000 }
+          );
+
+          console.log("Transaction result:", result);
+        } else {
+          const redeemer = CardanoWASM.Redeemer.new(
+            CardanoWASM.RedeemerTag.new_spend(),
+            CardanoWASM.BigNum.from_str("0"),
+            DatumUtils.mkConstr(0, [DatumUtils.mkInt(score.value)]),
+            CardanoWASM.ExUnits.new(
+              CardanoWASM.BigNum.from_str("100000"), // Mem
+              CardanoWASM.BigNum.from_str("10000000") // Steps
+            )
+          );
+
+          const datumJson = JSON.parse(
+            inlineDatum.to_json(DatumUtils.DatumSchema.Basic)
+          );
+          console.log("New datum JSON for updated score:", addressUtxos);
+          txBuilder
+            .setInputs(addressUtxos) // add some regular input to cover fees
+            // specify script UTxO to unlock
+            .txIn(
+              scriptUtxoPlayer.input.txHash,
+              scriptUtxoPlayer.input.outputIndex,
+              scriptUtxoPlayer.output.amount, //
+              scriptUtxoPlayer.output.address
+            )
+            .txInInlineDatum(scriptUtxoPlayer.output.inlineDatum!)
+            .txInScript(useRuntimeConfig().public.txScript)
+            .txInCollateral(
+              // specify collateral UTxO
+              addressUtxos[0]!.input.txHash,
+              addressUtxos[0]!.input.outputIndex,
+              addressUtxos[0]!.output.amount, //
+              addressUtxos[0]!.output.address
+            )
+            .addOutput({
+              address: useRuntimeConfig().public.scriptAddress,
+              amount: [
+                {
+                  unit: "lovelace",
+                  quantity: "5000000",
+                },
+              ],
+            })
+
+            .txInRedeemerValue(redeemer)
+            .txOutInlineDatumValue(
+              DatumUtils.mkConstr(0, [
+                DatumUtils.mkBytes(
+                  ParserUtils.stringToHex(walletStore.account!.paymentKeyHex)
+                ), // owner luôn từ wallet (hex→bytes)
+                DatumUtils.mkBytes(ParserUtils.stringToHex("VU QUOC HUY")),
+                DatumUtils.mkInt(score.value),
+                DatumUtils.mkInt(parseInt(datumJson.fields[3]) + 1),
+              ])
+            )
+            .setFee("0");
+
+          const tx = await txBuilder.complete();
+          const cborHex = tx.to_hex();
+          const signedCborHex = await walletStore.wallet?.signTx(cborHex);
+          const txId = Resolver.resolveTxHash(tx.to_hex());
+          const result = await $bridge.submitTxSync(
+            {
+              type: "Witnessed Tx ConwayEra",
+              description: "Ledger Cddl Format",
+              cborHex: signedCborHex,
+              txId: txId,
+            },
+            { timeout: 30000 }
+          );
+          console.log("Transaction result:", result);
+        }
+      } catch (error) {
+        console.error("Error connecting to Hydra Bridge at game over:", error);
+      }
+    }
+  }
+);
 </script>
 
 <template>

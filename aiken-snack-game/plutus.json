@@ -1,0 +1,95 @@
+{
+  "preamble": {
+    "title": "huy_vq/aiken-snack-game",
+    "description": "Aiken contracts for project 'huy_vq/aiken-snack-game'",
+    "version": "0.0.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.21+42babe5"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": [
+    {
+      "title": "game_score.game_score.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/game_score~1Datum"
+        }
+      },
+      "redeemer": {
+        "title": "_redeemer",
+        "schema": {
+          "$ref": "#/definitions/game_score~1Action"
+        }
+      },
+      "compiledCode": "589e01010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144c8cc896600266e1d2000300a375400d13232598009808001456600266e1d2000300c37540071324a2601e601a6ea800e2c805a2c8070dd6980700098059baa0068b2012300b001300b300c0013008375400516401830070013003375400f149a26cac80081",
+      "hash": "b049b06e6d6d8ed77af89f7b04e4ae54a86e28e98aa9ddae899868e1"
+    },
+    {
+      "title": "game_score.game_score.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "589e01010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144c8cc896600266e1d2000300a375400d13232598009808001456600266e1d2000300c37540071324a2601e601a6ea800e2c805a2c8070dd6980700098059baa0068b2012300b001300b300c0013008375400516401830070013003375400f149a26cac80081",
+      "hash": "b049b06e6d6d8ed77af89f7b04e4ae54a86e28e98aa9ddae899868e1"
+    }
+  ],
+  "definitions": {
+    "ByteArray": {
+      "dataType": "bytes"
+    },
+    "Int": {
+      "dataType": "integer"
+    },
+    "aiken/crypto/VerificationKeyHash": {
+      "title": "VerificationKeyHash",
+      "dataType": "bytes"
+    },
+    "game_score/Action": {
+      "title": "Action",
+      "anyOf": [
+        {
+          "title": "UpdateScore",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "$ref": "#/definitions/Int"
+            }
+          ]
+        }
+      ]
+    },
+    "game_score/Datum": {
+      "title": "Datum",
+      "anyOf": [
+        {
+          "title": "Datum",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "owner",
+              "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+            },
+            {
+              "title": "name",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "score",
+              "$ref": "#/definitions/Int"
+            },
+            {
+              "title": "numberOfPlayers",
+              "$ref": "#/definitions/Int"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

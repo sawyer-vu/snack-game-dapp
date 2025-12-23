@@ -41,6 +41,8 @@ export default defineNuxtConfig({
       httpsEndpoint:
         process.env.NUXT_PUBLIC_HTTPS_ENDPOINT || "http://localhost:3000",
       blockfrostApiKey: process.env.NUXT_PUBLIC_BLOCKFROST_API_KEY || "",
+      scriptAddress: process.env.NUXT_PUBLIC_SCRIPT_ADDRESS || "",
+      txScript: process.env.NUXT_PUBLIC_TX_SCRIPT || "",
     },
   },
 });

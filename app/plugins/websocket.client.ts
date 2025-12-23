@@ -151,7 +151,7 @@ export default defineNuxtPlugin(() => {
     window.addEventListener("beforeunload", disconnect);
   }
 
-  init();
+  // init();
 
   return {
     provide: {

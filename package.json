@@ -7,9 +7,14 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "aiken:init": "npx aiken new huy_vq/aiken-snack-game",
+    "aiken:build": "cd aiken-snack-game && npx aiken build",
+    "aiken:convert": "cd aiken-snack-game && npx aiken blueprint convert > subtractor.json",
+    "aiken:address": "cd aiken-snack-game && npx aiken blueprint address"
   },
   "dependencies": {
+    "@aiken-lang/aiken": "^1.1.21",
     "@hydra-sdk/bridge": "^1.1.5",
     "@hydra-sdk/cardano-wasm": "^0.0.5",
     "@hydra-sdk/core": "^1.1.5",
