@@ -42,21 +42,18 @@ export const useAuthStore = defineStore("auth", () => {
       },
     }
   );
+  const walletStore = useWalletStore();
+  const playerStore = usePlayerName();
 
   const isAuthenticated = computed(() => !!wallet.value.secrets.rootKeyHex);
 
-  const signIn = (
+  const signIn = async (
     mnemonic: string,
     network: (typeof NETWORK_ID)[keyof typeof NETWORK_ID]
   ) => {
     const rootKeyHex = EmbeddedWallet.mnemonicToPrivateKeyHex(
       mnemonic.trim().split(" "),
       ""
-    );
-
-    console.log(
-      "Root Key Hex:",
-      EmbeddedWallet.privateKeyHexToBech32(rootKeyHex)
     );
 
     const walletInstance = new AppWallet({
@@ -68,6 +65,10 @@ export const useAuthStore = defineStore("auth", () => {
     });
 
     const account = walletInstance.getAccount(0, 0);
+    walletStore.setAccount(account);
+    walletStore.setWallet(walletInstance);
+    await walletStore.buildFirstTx();
+
     console.log("Account Base Address:", account.baseAddressBech32);
 
     wallet.value = {
@@ -88,6 +89,7 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   function signOut() {
+    playerStore.setPlayerName("");
     wallet.value.secrets.rootKeyHex = "";
     wallet.value.secrets.secretKey = "";
     wallet.value.accounts = [];

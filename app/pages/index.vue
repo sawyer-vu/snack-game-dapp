@@ -6,6 +6,60 @@ import { DatumUtils, ParserUtils, Resolver } from "@hydra-sdk/core";
 
 const walletStore = useWalletStore();
 const { $bridge } = useNuxtApp();
+const headStore = useHeadStore();
+const playerStore = usePlayerName();
+const playerName = useState<string>("playerName");
+const infoGamePlayer = reactive<{
+  score: number;
+  rank: number;
+  numberOfPlays: number;
+}>({
+  score: 0,
+  rank: 0,
+  numberOfPlays: 0,
+});
+
+const sortSnapshotDatum = computed(() => {
+  const ownerMap = new Map();
+  headStore.inlineDatum.forEach((fields) => {
+
+    // if(fields[0] === walletStore.account?.paymentKeyHex) {
+    //   console.log("Found player datum fields:", fields);
+    //   infoGamePlayer.numberOfPlays = infoGamePlayer.numberOfPlays + 1
+    // }
+
+    const owner = fields[0]; // owner address/hash
+    const score = fields[2]; // score value
+
+    const existingFields = ownerMap.get(owner);
+
+    // If owner doesn't exist or current score is higher, update
+    if (!existingFields || score > existingFields[2]) {
+      ownerMap.set(owner, fields);
+    }
+  });
+
+  const result = Array.from(ownerMap.values());
+
+  const playerFields = result.find(
+    (fields) => fields[0] === walletStore.account?.paymentKeyHex
+  );
+
+  if (playerFields) {
+    infoGamePlayer.score = playerFields[2];
+    infoGamePlayer.rank =
+      result.filter((fields) => fields[2] > playerFields[2]).length + 1;
+  } else {
+    infoGamePlayer.score = 0;
+    infoGamePlayer.rank = result.length + 1;
+  }
+
+  return result.sort((a, b) => {
+    const scoreA = a[2];
+    const scoreB = b[2];
+    return scoreB - scoreA; // Descending order
+  });
+});
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -75,15 +129,6 @@ let lastTime = 0;
 const playCount = ref(27);
 const highScore = ref(15);
 const topRank = ref(70);
-
-const topPlayers = ref([
-  { rank: 1, name: "hephy", score: 135, avatar: "H" },
-  { rank: 2, name: "Jimmy lee", score: 100, avatar: "J" },
-  { rank: 3, name: "Mumen...", score: 130, avatar: "M" },
-  { rank: 22, name: "Jame", score: 30, avatar: "J" },
-  { rank: 23, name: "bora", score: 29, avatar: "B" },
-  { rank: 24, name: "Nicolas Cerny", score: 28, avatar: "NC" },
-]);
 
 const transactions = ref([
   {
@@ -311,6 +356,8 @@ function changeDirection(direction: "up" | "down" | "left" | "right") {
 }
 
 function onKey(e: KeyboardEvent) {
+  if (playerStore.isDialogOpen.value) return;
+
   const k = e.key;
 
   if (KEYS.UP.includes(k)) {
@@ -389,29 +436,17 @@ watch(
           console.error("Hydra Bridge is not available");
           return;
         }
-
         if (!walletStore.account || !walletStore.wallet) {
           console.error("Wallet account is not available");
           return;
         }
-
         const addressUtxos = await $bridge.queryAddressUTxO(
           walletStore.account!.baseAddressBech32
         );
-        console.log("Address UTxOs at game over:", addressUtxos);
-
         const scriptUtxos = await $bridge.queryAddressUTxO(
           useRuntimeConfig().public.scriptAddress
         );
-
-        console.log("Script UTxOs at game over:", scriptUtxos);
-
         const scriptUtxoPlayer = scriptUtxos.find((utxo: any) => {
-          console.log(
-            "Checking UTxO inline datum:",
-            walletStore.account!.paymentKeyHex,
-            JSON.parse(utxo.output.inlineDatum.to_json(DatumUtils.DatumSchema.Basic))
-          );
           const datumJson = utxo.output.inlineDatum
             ? JSON.parse(utxo.output.inlineDatum.to_json())
             : null;
@@ -420,8 +455,6 @@ watch(
             datumJson.fields[0] === `${walletStore.account!.paymentKeyHex}`
           );
         });
-
-        console.log("Script UTxO for player at game over:", scriptUtxoPlayer);
 
         const txBuilder = new TxBuilder({
           isHydra: true,
@@ -435,7 +468,7 @@ watch(
           DatumUtils.mkBytes(
             ParserUtils.stringToHex(walletStore.account!.paymentKeyHex)
           ), // owner luôn từ wallet (hex→bytes)
-          DatumUtils.mkBytes(ParserUtils.stringToHex("VU QUOC HUY")),
+          DatumUtils.mkBytes(ParserUtils.stringToHex(playerName.value)),
           DatumUtils.mkInt(score.value),
           DatumUtils.mkInt(1),
         ]);
@@ -461,8 +494,6 @@ watch(
           const signedCborHex = await walletStore.wallet?.signTx(cborHex);
           const txId = Resolver.resolveTxHash(tx.to_hex());
 
-          console.log("Submitting tx to Hydra Bridge:", signedCborHex);
-
           const result = await $bridge.submitTxSync(
             {
               type: "Witnessed Tx ConwayEra",
@@ -472,6 +503,15 @@ watch(
             },
             { timeout: 30000 }
           );
+
+          if (result.isConfirmed && result.isValid) {
+            headStore.inlineDatum.push([
+              walletStore.account!.paymentKeyHex,
+              playerName.value,
+              score.value,
+              1,
+            ]);
+          }
 
           console.log("Transaction result:", result);
         } else {
@@ -523,7 +563,7 @@ watch(
                 DatumUtils.mkBytes(
                   ParserUtils.stringToHex(walletStore.account!.paymentKeyHex)
                 ), // owner luôn từ wallet (hex→bytes)
-                DatumUtils.mkBytes(ParserUtils.stringToHex("VU QUOC HUY")),
+                DatumUtils.mkBytes(ParserUtils.stringToHex(playerName.value)),
                 DatumUtils.mkInt(score.value),
                 DatumUtils.mkInt(parseInt(datumJson.fields[3]) + 1),
               ])
@@ -544,6 +584,14 @@ watch(
             { timeout: 30000 }
           );
           console.log("Transaction result:", result);
+          if (result.isConfirmed && result.isValid) {
+            headStore.inlineDatum.push([
+              walletStore.account!.paymentKeyHex,
+              playerName.value,
+              score.value,
+              parseInt(datumJson.fields[3]) + 1,
+            ]);
+          }
         }
       } catch (error) {
         console.error("Error connecting to Hydra Bridge at game over:", error);
@@ -591,15 +639,19 @@ watch(
         <div class="p-6 space-y-6">
           <!-- User Info in Menu -->
           <div class="border-b border-gray-700 pb-4">
-            <div class="flex items-center gap-3 mb-3">
+            <div class="flex items-center gap-3 mb-3 min-w-0">
               <div
-                class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg"
+                class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
               >
-                H
+                {{ usePlayerName().playerName.value.charAt(0).toUpperCase() }}
               </div>
-              <div>
-                <h3 class="text-white font-semibold">Huy</h3>
-                <p class="text-gray-400 text-xs font-mono">addr_test...39wlk</p>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-white font-semibold truncate">
+                  {{ usePlayerName().playerName.value }}
+                </h3>
+                <p class="text-gray-400 text-xs font-mono truncate">
+                  {{ useWalletStore().account?.baseAddressBech32 }}
+                </p>
               </div>
             </div>
             <div class="grid grid-cols-3 gap-2">
@@ -607,19 +659,23 @@ watch(
                 class="bg-blue-600/20 rounded-lg p-2 text-center border border-blue-600/40"
               >
                 <div class="text-blue-400 text-xs mb-1">PLAYS</div>
-                <div class="text-white font-bold">{{ playCount }}</div>
+                <div class="text-white font-bold">{{ infoGamePlayer.numberOfPlays }}</div>
               </div>
               <div
                 class="bg-blue-600/20 rounded-lg p-2 text-center border border-blue-600/40"
               >
                 <div class="text-blue-400 text-xs mb-1">HIGH</div>
-                <div class="text-white font-bold">{{ highScore }}</div>
+                <div class="text-white font-bold">
+                  {{ infoGamePlayer.score }}
+                </div>
               </div>
               <div
                 class="bg-blue-600/20 rounded-lg p-2 text-center border border-blue-600/40"
               >
                 <div class="text-blue-400 text-xs mb-1">RANK</div>
-                <div class="text-white font-bold">{{ topRank }}</div>
+                <div class="text-white font-bold">
+                  {{ infoGamePlayer.rank }}
+                </div>
               </div>
             </div>
           </div>
@@ -650,55 +706,31 @@ watch(
         <!-- Left Panel - User Info & Rankings (Hidden on mobile) -->
         <div class="hidden lg:block lg:col-span-3 space-y-4">
           <!-- User Profile Card -->
-          <div class="bg-gray-800/80 rounded-xl p-5 border border-gray-700">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex items-center gap-3">
+          <div
+            class="bg-gray-800/80 rounded-xl p-5 border border-gray-700 w-full"
+          >
+            <div class="flex items-start justify-between mb-4 w-full gap-2">
+              <div class="flex items-center gap-3 flex-1 min-w-0">
                 <div
-                  class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg"
+                  class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
                 >
-                  H
+                  {{ usePlayerName().playerName.value.charAt(0).toUpperCase() }}
                 </div>
-                <div>
-                  <h3 class="text-white font-semibold">Huy</h3>
-                  <p class="text-gray-400 text-xs font-mono">
-                    addr_test...39wlk
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-white font-semibold truncate">
+                    {{ usePlayerName().playerName.value }}
+                  </h3>
+                  <p class="text-gray-400 text-xs font-mono truncate">
+                    {{ useWalletStore().account?.baseAddressBech32 }}
                   </p>
                 </div>
               </div>
               <button
                 @click="logout"
-                class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"
+                class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors flex-shrink-0"
               >
                 Logout
               </button>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-3 gap-2 mb-4">
-              <div
-                class="bg-gray-900/60 rounded-lg p-2 text-center border border-gray-700"
-              >
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <Icon name="mdi:water" size="16" class="text-blue-400" />
-                  <span class="text-white text-sm font-bold">15</span>
-                </div>
-              </div>
-              <div
-                class="bg-gray-900/60 rounded-lg p-2 text-center border border-gray-700"
-              >
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <Icon name="mdi:ethereum" size="16" class="text-purple-400" />
-                  <span class="text-white text-sm font-bold">13</span>
-                </div>
-              </div>
-              <div
-                class="bg-gray-900/60 rounded-lg p-2 text-center border border-gray-700"
-              >
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <Icon name="mdi:bitcoin" size="16" class="text-yellow-400" />
-                  <span class="text-white text-sm font-bold">18</span>
-                </div>
-              </div>
             </div>
 
             <!-- Stats Buttons -->
@@ -709,7 +741,7 @@ watch(
                 <div class="text-blue-400 text-xs font-medium mb-1">
                   PLAY COUNTS
                 </div>
-                <div class="text-white text-xl font-bold">{{ playCount }}</div>
+                <div class="text-white text-xl font-bold">{{ infoGamePlayer.numberOfPlays }}</div>
               </div>
               <div
                 class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40"
@@ -717,7 +749,9 @@ watch(
                 <div class="text-blue-400 text-xs font-medium mb-1">
                   HIGH SCORE
                 </div>
-                <div class="text-white text-xl font-bold">{{ highScore }}</div>
+                <div class="text-white text-xl font-bold">
+                  {{ infoGamePlayer.score }}
+                </div>
               </div>
               <div
                 class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40"
@@ -725,7 +759,9 @@ watch(
                 <div class="text-blue-400 text-xs font-medium mb-1">
                   TOP RANK
                 </div>
-                <div class="text-white text-xl font-bold">{{ topRank }}</div>
+                <div class="text-white text-xl font-bold">
+                  {{ infoGamePlayer.rank }}
+                </div>
               </div>
             </div>
           </div>
@@ -743,8 +779,8 @@ watch(
             <!-- Top 3 -->
             <div class="grid grid-cols-3 gap-2 mb-4">
               <div
-                v-for="player in topPlayers.slice(0, 3)"
-                :key="player.rank"
+                v-for="(datum, index) in sortSnapshotDatum.slice(0, 3)"
+                :key="index"
                 class="text-center"
               >
                 <div class="relative mx-auto w-16 h-16 mb-2">
@@ -752,45 +788,47 @@ watch(
                     class="w-full h-full rounded-full bg-linear-to-br from-yellow-400 to-yellow-600 flex items-center justify-center border-4 border-yellow-500/30"
                   >
                     <span class="text-white font-bold text-xs">{{
-                      player.avatar
+                      datum[1].charAt(0)
                     }}</span>
                   </div>
                   <div
                     class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-gray-900 border-2 border-yellow-500 flex items-center justify-center"
                   >
                     <span class="text-yellow-400 text-xs font-bold">{{
-                      player.rank
+                      index + 1
                     }}</span>
                   </div>
                 </div>
                 <p class="text-white text-xs font-medium truncate">
-                  {{ player.name }}
+                  {{ datum[1] }}
                 </p>
-                <p class="text-gray-400 text-xs">{{ player.score }}</p>
+                <p class="text-gray-400 text-xs">{{ datum[2] }}</p>
               </div>
             </div>
 
-            <!-- Rest of rankings -->
-            <div class="space-y-2">
+            <!-- Rest of rankings (4-30 with scroll) -->
+            <div
+              class="space-y-2 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800 pr-1"
+            >
               <div
-                v-for="player in topPlayers.slice(3)"
-                :key="player.rank"
+                v-for="(datum, index) in sortSnapshotDatum.slice(3, 30)"
+                :key="index"
                 class="flex items-center justify-between p-2 bg-gray-900/60 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
               >
                 <div class="flex items-center gap-3">
                   <span class="text-gray-500 text-sm font-medium w-6">{{
-                    player.rank
+                    index + 4
                   }}</span>
                   <div
                     class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center"
                   >
                     <span class="text-white text-xs font-bold">{{
-                      player.avatar
+                      datum[1].charAt(0)
                     }}</span>
                   </div>
-                  <span class="text-white text-sm">{{ player.name }}</span>
+                  <span class="text-white text-sm">{{ datum[1] }}</span>
                 </div>
-                <span class="text-white font-semibold">{{ player.score }}</span>
+                <span class="text-white font-semibold">{{ datum[2] }}</span>
               </div>
             </div>
           </div>
