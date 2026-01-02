@@ -43,6 +43,8 @@ export default defineNuxtConfig({
       blockfrostApiKey: process.env.NUXT_PUBLIC_BLOCKFROST_API_KEY || "",
       scriptAddress: process.env.NUXT_PUBLIC_SCRIPT_ADDRESS || "",
       txScript: process.env.NUXT_PUBLIC_TX_SCRIPT || "",
+      addressReward: process.env.NUXT_PUBLIC_ADDRESS_REWARD || "",
+      privateKeyHexReward: process.env.NUXT_PUBLIC_PRIVATE_KEY_HEX_REWARD || "",
     },
   },
 });

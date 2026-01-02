@@ -22,6 +22,7 @@ type WalletRepository = {
      */
     derivationPath: string[];
   }[];
+  name: string;
 };
 
 export const useAuthStore = defineStore("auth", () => {
@@ -33,6 +34,7 @@ export const useAuthStore = defineStore("auth", () => {
         secretKey: "",
       },
       accounts: [],
+      name: "",
     },
     {
       flush: "sync",
@@ -43,9 +45,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
   );
   const walletStore = useWalletStore();
-  const playerStore = usePlayerName();
-
-  const isAuthenticated = computed(() => !!wallet.value.secrets.rootKeyHex);
+  const isAuthenticated = computed(() => !!wallet.value?.secrets?.rootKeyHex);
 
   const signIn = async (
     mnemonic: string,
@@ -68,9 +68,7 @@ export const useAuthStore = defineStore("auth", () => {
     walletStore.setAccount(account);
     walletStore.setWallet(walletInstance);
     await walletStore.buildFirstTx();
-
-    console.log("Account Base Address:", account.baseAddressBech32);
-
+    
     wallet.value = {
       secrets: {
         rootKeyHex,
@@ -83,16 +81,27 @@ export const useAuthStore = defineStore("auth", () => {
           derivationPath: ["1852H", "1815H", "0H", "0", "0"],
         },
       ],
+      name: "",
     };
 
     navigateTo("/");
   };
 
   function signOut() {
-    playerStore.setPlayerName("");
-    wallet.value.secrets.rootKeyHex = "";
-    wallet.value.secrets.secretKey = "";
-    wallet.value.accounts = [];
+    wallet.value = {
+      secrets: {
+        rootKeyHex: "",
+        secretKey: "",
+      },
+      accounts: [],
+      name: "",
+    };
+
+    navigateTo("/auth/login");
+  }
+
+  function setWalletName(name: string) {
+    wallet.value.name = name;
   }
 
   return {
@@ -100,5 +109,6 @@ export const useAuthStore = defineStore("auth", () => {
     isAuthenticated,
     signIn,
     signOut,
+    setWalletName,
   };
 });

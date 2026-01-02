@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from "@/stores/auth.store";
-import {
-  AppWallet,
-  NETWORK_ID,
-  type Network,
-  EmbeddedWallet,
-} from "@hydra-sdk/core";
+import { NETWORK_ID, type Network, EmbeddedWallet } from "@hydra-sdk/core";
 
 const selectedNetwork = ref<Network>("PREVIEW");
 const mnemonic = ref("");
@@ -19,27 +13,8 @@ const connectWallet = async () => {
     return;
   }
   loading.value = true;
-  authStore.signIn(mnemonic.value, NETWORK_ID[selectedNetwork.value]);
+  await authStore.signIn(mnemonic.value, NETWORK_ID[selectedNetwork.value]);
   loading.value = false;
-};
-
-const handleEternlConnect = async () => {
-  if (window.cardano && window.cardano.eternl) {
-    try {
-      const walletApi = await window.cardano.eternl.enable();
-      console.log("Wallet connected!", walletApi);
-      return walletApi;
-    } catch (err) {
-      console.error("User rejected connection", err);
-    }
-  } else {
-    console.error("Eternl wallet not installed");
-  }
-};
-
-const handleDisconnect = () => {
-  // disconnect();
-  error.value = "";
 };
 
 const generateMnemonic = () => {
@@ -56,7 +31,9 @@ const formatAddress = (address: string | null) => {
   <div class="min-h-screen p-6 flex items-center justify-center">
     <div class="w-full max-w-xl">
       <!-- Network Selector -->
-      <div class="bg-gray-800 rounded-lg p-3 border border-gray-700 space-y-4 mb-4">
+      <div
+        class="bg-gray-800 rounded-lg p-3 border border-gray-700 space-y-4 mb-4"
+      >
         <h3 class="text-white font-medium">Network</h3>
         <div class="grid grid-cols-3 gap-2">
           <button
@@ -143,18 +120,6 @@ const formatAddress = (address: string | null) => {
           class="bg-red-900/30 border border-red-600 rounded-lg p-3"
         >
           <p class="text-red-300 text-sm">{{ error }}</p>
-        </div>
-
-        <!-- Eternl Wallet -->
-        <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-          <h3 class="text-white font-medium mb-3">Connect with Eternl</h3>
-          <button
-            @click="handleEternlConnect"
-            :disabled="loading"
-            class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition"
-          >
-            {{ loading ? "Connecting..." : "Connect Eternl" }}
-          </button>
         </div>
       </div>
     </div>

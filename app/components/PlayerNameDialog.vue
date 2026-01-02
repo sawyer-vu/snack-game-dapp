@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { isDialogOpen, setPlayerName, closeDialog } = usePlayerName();
+const authStore = useAuthStore();
 
 const inputName = ref("");
 const errorMessage = ref("");
@@ -12,18 +12,7 @@ const handleSubmit = () => {
     return;
   }
 
-  if (trimmedName.length < 2) {
-    errorMessage.value = "Name must be at least 2 characters";
-    return;
-  }
-
-  if (trimmedName.length > 20) {
-    errorMessage.value = "Name must be less than 20 characters";
-    return;
-  }
-
-  setPlayerName(trimmedName);
-  closeDialog();
+  authStore.setWalletName(trimmedName);
   errorMessage.value = "";
   inputName.value = "";
 };
@@ -33,6 +22,10 @@ const handleInput = () => {
     errorMessage.value = "";
   }
 };
+
+const isDialogOpen = computed(() => {
+  return authStore.wallet.name === "";
+});
 </script>
 
 <template>
@@ -44,11 +37,11 @@ const handleInput = () => {
   >
     <div
       v-if="isDialogOpen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      class="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       @click.self="() => {}"
     >
       <Transition
-        enter-active-class="transition-all duration-300"
+        enter-active-class="transition-all duration-300 "
         leave-active-class="transition-all duration-300"
         enter-from-class="opacity-0 scale-95"
         leave-to-class="opacity-0 scale-95"

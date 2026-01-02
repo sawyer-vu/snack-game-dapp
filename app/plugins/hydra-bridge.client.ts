@@ -1,10 +1,21 @@
-import { useHeadStore } from "./../stores/head.store";
+import { useHydraStore } from "../stores/hydra.store";
 import { HydraBridge } from "@hydra-sdk/bridge";
-import { DatumUtils } from "@hydra-sdk/core";
+
+declare module "#app" {
+  interface NuxtApp {
+    $bridge: HydraBridge | null;
+  }
+}
+
+declare module "vue" {
+  interface ComponentCustomProperties {
+    $bridge: HydraBridge | null;
+  }
+}
 
 const hydraBridge = ref<HydraBridge | null>(null);
 
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(async (nuxtApp) => {
   const initConnectHydraBridge = async () => {
     hydraBridge.value = new HydraBridge({
       url: useRuntimeConfig().public.wssEndpoint,
@@ -12,31 +23,13 @@ export default defineNuxtPlugin(async () => {
     });
 
     await hydraBridge.value.connect();
-    const headStore = useHeadStore();
-    await hydraBridge.value.querySnapshotUtxo();
-    const arraySnapshotUtxo = await hydraBridge.value.snapshotUtxoArray();
-
-    // Map UTxOs to get datum fields
-    headStore.inlineDatum = arraySnapshotUtxo
-      .map((utxo) => {
-        if (utxo.output.inlineDatum) {
-          const inlineDatumJson = utxo.output.inlineDatum.to_json(
-            DatumUtils.DatumSchema.Basic
-          );
-          return JSON.parse(inlineDatumJson).fields;
-        }
-      })
-      .filter(Boolean);
-
-    hydraBridge.value.events.on("onMessage", (payload) => {
-      // console.log("Hydra Bridge Message:", payload);
-    });
   };
 
   await initConnectHydraBridge();
-  return {
-    provide: {
-      bridge: hydraBridge.value,
-    },
-  };
+
+  // Provide bridge first, then query
+  nuxtApp.provide("bridge", hydraBridge.value);
+
+  const hydraStore = useHydraStore();
+  await hydraStore.queryInlineDatum();
 });

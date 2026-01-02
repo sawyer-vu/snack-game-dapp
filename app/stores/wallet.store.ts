@@ -12,7 +12,8 @@ export const useWalletStore = defineStore("wallet", () => {
   const wallet = ref<AppWallet | null>(null);
   const account = ref<Account | null>(null);
   const snapshotUtxo = ref<any>();
-  const $bridge = useNuxtApp().$bridge;
+  const config = useRuntimeConfig().public;
+  const authStore = useAuthStore();
 
   const setWallet = (appWallet: AppWallet) => {
     wallet.value = appWallet;
@@ -29,7 +30,9 @@ export const useWalletStore = defineStore("wallet", () => {
   };
 
   const buildFirstTx = async () => {
+    const { $bridge } = useNuxtApp();
     if (wallet.value && account.value) {
+      console.log("Hydra Bridge connected:", $bridge?.connected());
       if (!$bridge?.connected()) {
         console.error("Hydra Bridge is not available");
         return;
@@ -61,18 +64,13 @@ export const useWalletStore = defineStore("wallet", () => {
       if (
         inlineDatumJson &&
         inlineDatumJson.fields[1] &&
-        !usePlayerName().playerName.value
+        !authStore.wallet.name
       ) {
         console.log(
           "Setting player name from datum:",
           inlineDatumJson.fields[1]
         );
-        usePlayerName().setPlayerName(inlineDatumJson.fields[1]);
-        usePlayerName().closeDialog();
-      } else {
-        if (!usePlayerName().playerName.value) {
-          usePlayerName().openDialog();
-        }
+        authStore.wallet.name = inlineDatumJson.fields[1];
       }
 
       //end logic set player name
@@ -88,9 +86,7 @@ export const useWalletStore = defineStore("wallet", () => {
       );
 
       const utxoParticipant = snapshotUtxoArray.filter(
-        (utxo) =>
-          utxo.output.address ===
-          "addr_test1qpa0x5artsphmepgda29cz6pw23cx2e9l33d2k8hawr8wd2aqznlwwyz6r78qj3l9tm29cc8pnk3vv82crtrg7surqaqqu5n36"
+        (utxo) => utxo.output.address === config.addressReward
       );
 
       const txOutputs = {
@@ -110,14 +106,16 @@ export const useWalletStore = defineStore("wallet", () => {
 
         txBuilder.setInputs(utxoParticipant);
         txBuilder.addOutput(txOutputs);
-        txBuilder.setChangeAddress(
-          "addr_test1qpa0x5artsphmepgda29cz6pw23cx2e9l33d2k8hawr8wd2aqznlwwyz6r78qj3l9tm29cc8pnk3vv82crtrg7surqaqqu5n36"
-        );
+        txBuilder.setChangeAddress(config.addressReward as string);
 
         const tx = await txBuilder.complete();
         const cborHex = tx.to_hex();
         const txId = Resolver.resolveTxHash(tx.to_hex());
-
+        console.log(
+          EmbeddedWallet.privateKeyHexToBech32(
+            "482899b0bde6155e917fb1765ac4ca941169687af4d0f22bb5d92065980aad5640c880562eacb379e3c8cea35f053a69cfbcce5829d3889de6366c18530e2aa5d272bc26e900457b4cad91a0da19d65088f6c96af1a9cc19907aba8befeb2cd4"
+          )
+        );
         const walletParticipant = new AppWallet({
           key: {
             type: "root",
