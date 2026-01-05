@@ -45,7 +45,7 @@ function logout() {
     <!-- Stats Buttons -->
     <div class="grid grid-cols-3 gap-2">
       <div
-        class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40"
+        class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40 flex flex-col  justify-between"
       >
         <div class="mb-1 text-xs font-medium text-blue-400">PLAY COUNTS</div>
         <div class="text-xl font-bold text-white">
@@ -53,7 +53,7 @@ function logout() {
         </div>
       </div>
       <div
-        class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40"
+        class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40 flex flex-col  justify-between"
       >
         <div class="mb-1 text-xs font-medium text-blue-400">HIGH SCORE</div>
         <div class="text-xl font-bold text-white">
@@ -61,7 +61,7 @@ function logout() {
         </div>
       </div>
       <div
-        class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40"
+        class="bg-blue-600/20 rounded-lg p-2.5 text-center border border-blue-600/40 flex flex-col  justify-between"
       >
         <div class="mb-1 text-xs font-medium text-blue-400">TOP RANK</div>
         <div class="text-xl font-bold text-white">

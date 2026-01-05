@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from "@/stores/auth.store";
-import { TxBuilder } from "@hydra-sdk/transaction";
 import { CardanoWASM } from "@hydra-sdk/cardano-wasm";
-import { DatumUtils, ParserUtils, Resolver } from "@hydra-sdk/core";
+import { DatumUtils, ParserUtils } from "@hydra-sdk/core";
 import ProfileCard from "@/components/ProfileCard.vue";
 import SnapshotList from "~/components/SnapshotList.vue";
 import TopRanking from "~/components/TopRanking.vue";
@@ -25,11 +24,6 @@ const infoGamePlayer = reactive<{
 const sortSnapshotDatum = computed(() => {
   const ownerMap = new Map();
   hydraStore.inlineDatum.forEach((fields) => {
-    // if(fields[0] === walletStore.account?.paymentKeyHex) {
-    //   console.log("Found player datum fields:", fields);
-    //   infoGamePlayer.numberOfPlays = infoGamePlayer.numberOfPlays + 1
-    // }
-
     const owner = fields.paymentKeyHex; // owner address/hash
     const score = fields.score; // score value
 
@@ -62,9 +56,7 @@ const sortSnapshotDatum = computed(() => {
     return scoreB - scoreA; // Descending order
   });
 });
-// ============================================================================
-// CONSTANTS
-// ============================================================================
+
 const GRID_SIZE = 16;
 const INITIAL_SPEED = 5;
 const MAX_SPEED = 10;
@@ -85,20 +77,9 @@ const KEYS = {
   SPACE: " ",
 };
 
-// ============================================================================
-// STORES & COMPOSABLES
-// ============================================================================
 const authStore = useAuthStore();
-
-// ============================================================================
-// STATE - UI
-// ============================================================================
 const isMenuOpen = ref(false);
 const isFirstRender = ref(true);
-
-// ============================================================================
-// STATE - Canvas & Game Configuration
-// ============================================================================
 const canvas = ref<HTMLCanvasElement | null>(null);
 const gridGameRef = useTemplateRef<HTMLDivElement>("gridGameRef");
 
@@ -106,9 +87,6 @@ const width = computed(() => gridGameRef.value?.clientWidth || 400);
 const height = computed(() => gridGameRef.value?.clientWidth || 400);
 const tileSize = () => Math.floor(width.value / GRID_SIZE);
 
-// ============================================================================
-// STATE - Game Logic
-// ============================================================================
 const gridSize = ref(GRID_SIZE);
 const speed = ref(INITIAL_SPEED);
 const score = ref(0);
@@ -125,49 +103,6 @@ let animationFrame = 0;
 let accumulator = 0;
 let lastTime = 0;
 
-// ============================================================================
-// STATE - Stats & Leaderboard
-// ============================================================================
-const playCount = ref(27);
-const highScore = ref(15);
-const topRank = ref(70);
-
-const transactions = ref([
-  {
-    hash: "043525dec502...e64aeb2adc73",
-    player: 388,
-    avgSize: "335 B",
-    total: "89.51K",
-  },
-  {
-    hash: "h893d196e29d...a988dee590ff",
-    player: 388,
-    avgSize: "335 B",
-    total: "89.51K",
-  },
-  {
-    hash: "b09d558bafa1...7e486ed9bc4c",
-    player: 388,
-    avgSize: "335 B",
-    total: "89.51K",
-  },
-  {
-    hash: "fffdf6fd6b25...99b9265497Ba",
-    player: 388,
-    avgSize: "335 B",
-    total: "89.51K",
-  },
-  {
-    hash: "24c1ceb88983...e183db16ab14",
-    player: 388,
-    avgSize: "335 B",
-    total: "89.51K",
-  },
-]);
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
 function randPos() {
   return {
     x: Math.floor(Math.random() * gridSize.value),
@@ -179,9 +114,6 @@ function isSnakeColliding(pos: { x: number; y: number }) {
   return snake.value.some((s) => s.x === pos.x && s.y === pos.y);
 }
 
-// ============================================================================
-// GAME LOGIC - Core Functions
-// ============================================================================
 function spawnFood() {
   let pos = randPos();
   while (isSnakeColliding(pos)) {
@@ -215,7 +147,6 @@ function resetGame() {
 function startGame() {
   resetGame();
   isFirstRender.value = false;
-  playCount.value++;
   cancelAnimationFrame(animationFrame);
   lastTime = performance.now();
   accumulator = 0;
@@ -224,9 +155,6 @@ function startGame() {
 
 function endGame() {
   gameOver.value = true;
-  if (score.value > highScore.value) {
-    highScore.value = score.value;
-  }
   cancelAnimationFrame(animationFrame);
 }
 
@@ -287,9 +215,6 @@ function loop(time: number) {
   }
 }
 
-// ============================================================================
-// RENDERING
-// ============================================================================
 async function render(ctx: CanvasRenderingContext2D) {
   await nextTick();
 
@@ -335,9 +260,6 @@ async function render(ctx: CanvasRenderingContext2D) {
   }
 }
 
-// ============================================================================
-// INPUT HANDLERS
-// ============================================================================
 function changeDirection(direction: "up" | "down" | "left" | "right") {
   if (gameOver.value) return;
 
@@ -381,26 +303,10 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
-// ============================================================================
-// UI HANDLERS
-// ============================================================================
 function toggleMenu() {
   isMenuOpen.value = !isMenuOpen.value;
 }
 
-function navigateToRanking() {
-  navigateTo("/top-ranking");
-  isMenuOpen.value = false;
-}
-
-function logout() {
-  authStore.signOut();
-  navigateTo("/auth/login");
-}
-
-// ============================================================================
-// LIFECYCLE HOOKS
-// ============================================================================
 onMounted(() => {
   const cvs = canvas.value!;
   const dpr = window.devicePixelRatio || 1;
@@ -458,6 +364,9 @@ watch(
           );
         });
 
+        const now = new Date();
+        const currentTime = now.toISOString();
+
         if (!scriptUtxoPlayer) {
           const outputs = {
             address: useRuntimeConfig().public.scriptAddress,
@@ -476,21 +385,15 @@ watch(
             DatumUtils.mkBytes(ParserUtils.stringToHex(authStore.wallet.name)),
             DatumUtils.mkInt(score.value),
             DatumUtils.mkInt(1),
+            DatumUtils.mkBytes(ParserUtils.stringToHex(currentTime)),
           ]);
 
-          const result = await buildTx({
+          await buildTx({
             inputs: addressUtxos,
             outputs,
             txOutInlineDatum: inlineDatum,
             changeAddress: walletStore.account!.baseAddressBech32,
           });
-
-          if (result?.isConfirmed && result?.isValid) {
-            // Refresh data from Hydra snapshot instead of manually pushing
-            await hydraStore.queryInlineDatum();
-          }
-
-          console.log("Transaction result:", result);
         } else {
           const redeemer = CardanoWASM.Redeemer.new(
             CardanoWASM.RedeemerTag.new_spend(),
@@ -527,9 +430,10 @@ watch(
             DatumUtils.mkBytes(ParserUtils.stringToHex(authStore.wallet.name)),
             DatumUtils.mkInt(score.value),
             DatumUtils.mkInt(parseInt(datumJson.fields[3]) + 1),
+            DatumUtils.mkBytes(ParserUtils.stringToHex(currentTime)),
           ]);
 
-          const result = await buildTx({
+          await buildTx({
             inputs: addressUtxos,
             outputs,
             txOutInlineDatum,
@@ -539,11 +443,6 @@ watch(
             txIn: scriptUtxoPlayer,
             collateral: addressUtxos[0],
           });
-
-          if (result?.isConfirmed && result?.isValid) {
-            // Refresh data from Hydra snapshot instead of manually pushing
-            await hydraStore.queryInlineDatum();
-          }
         }
       } catch (error) {
         console.error("Error connecting to Hydra Bridge at game over:", error);
@@ -568,7 +467,42 @@ watch(
 
         <!-- Center Panel - Game -->
         <div class="flex flex-col items-center justify-center lg:col-span-6">
-          <!-- <h1 class="mb-6 text-3xl font-bold text-white">Score: {{ score }}</h1> -->
+          <!-- Score Display -->
+          <div
+            class="relative px-4 py-3 mb-4 overflow-hidden border-2 rounded-xl lg:px-8 lg:py-4 lg:mb-6 lg:border-4 lg:rounded-2xl bg-linear-to-br from-slate-800 via-slate-900 to-slate-950 border-orange-600/50 shadow-2xl mt-4"
+          >
+            <!-- Decorative elements -->
+            <div
+              class="absolute top-0 right-0 w-20 h-20 rounded-full opacity-20 lg:w-32 lg:h-32 bg-linear-to-br from-orange-500 to-red-600 -translate-y-10 translate-x-10 lg:-translate-y-16 lg:translate-x-16 blur-2xl"
+            />
+            <div
+              class="absolute bottom-0 left-0 w-20 h-20 rounded-full opacity-20 lg:w-32 lg:h-32 bg-linear-to-tr from-yellow-500 to-orange-600 translate-y-10 -translate-x-10 lg:translate-y-16 lg:-translate-x-16 blur-2xl"
+            />
+
+            <!-- Content -->
+            <div class="relative z-10 text-center">
+              <div class="flex items-center justify-center gap-1 mb-1 lg:gap-2">
+                <Icon
+                  name="mdi:star"
+                  class="text-base lg:text-xl text-yellow-500"
+                />
+                <p
+                  class="text-xs font-bold tracking-wider uppercase lg:text-sm text-slate-400"
+                >
+                  Score
+                </p>
+                <Icon
+                  name="mdi:star"
+                  class="text-base lg:text-xl text-yellow-500"
+                />
+              </div>
+              <div
+                class="text-4xl font-black lg:text-5xl bg-linear-to-r from-orange-400 via-red-500 to-orange-600 bg-clip-text text-transparent drop-shadow-lg"
+              >
+                {{ score }}
+              </div>
+            </div>
+          </div>
 
           <div
             ref="gridGameRef"
@@ -589,7 +523,7 @@ watch(
                 {{ isFirstRender ? "TAP TO PLAY" : "Game Over" }}
               </h2>
               <p v-show="!isFirstRender" class="mb-6 text-xl">
-                Score: {{ score }}
+                {{ score }} points
               </p>
               <button
                 @click="startGame"

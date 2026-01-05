@@ -14,37 +14,76 @@ const props = defineProps<{ sortSnapshotDatum: any[] }>();
 
     <!-- Top 3 -->
     <div class="grid grid-cols-3 gap-2 mb-4">
-      <div
-        v-for="(datum, index) in sortSnapshotDatum.slice(0, 3)"
-        :key="index"
-        class="text-center"
-      >
+      <!-- Top 2 (Silver) -->
+      <div v-if="sortSnapshotDatum[1]" class="text-center">
         <div class="relative w-16 h-16 mx-auto mb-2">
           <div
-            class="flex items-center justify-center w-full h-full border-4 rounded-full bg-linear-to-br from-yellow-400 to-yellow-600 border-yellow-500/30"
+            class="flex items-center justify-center w-full h-full rounded-full bg-linear-to-br from-gray-300 to-gray-500 border-gray-400/30"
           >
-            <span class="text-xs font-bold text-white">{{
-              datum.name?.charAt(0)
+            <span class="text-sm font-bold text-white shrink-0">{{
+              sortSnapshotDatum[1].name?.charAt(0)?.toUpperCase()
+            }}</span>
+          </div>
+          <div
+            class="absolute flex items-center justify-center w-8 h-8 -translate-x-1/2 bg-gray-900 border-2 border-gray-400 rounded-full -bottom-1 left-1/2"
+          >
+            <span class="text-xs font-bold text-gray-300">2</span>
+          </div>
+        </div>
+        <p class="text-xs font-medium text-white truncate">
+          {{ sortSnapshotDatum[1].name }}
+        </p>
+        <p class="text-xs text-gray-400">{{ sortSnapshotDatum[1].score }}</p>
+      </div>
+
+      <!-- Top 1 (Gold) -->
+      <div v-if="sortSnapshotDatum[0]" class="text-center">
+        <div class="relative w-20 h-20 mx-auto mb-2">
+          <div
+            class="flex items-center justify-center w-full h-full rounded-full bg-linear-to-br from-yellow-300 to-yellow-600 border-yellow-500/50"
+          >
+            <span class="text-base font-bold text-white">{{
+              sortSnapshotDatum[0].name?.charAt(0)?.toUpperCase()
             }}</span>
           </div>
           <div
             class="absolute flex items-center justify-center w-8 h-8 -translate-x-1/2 bg-gray-900 border-2 border-yellow-500 rounded-full -bottom-1 left-1/2"
           >
-            <span class="text-xs font-bold text-yellow-400">{{
-              index + 1
-            }}</span>
+            <span class="text-xs font-bold text-yellow-400">1</span>
           </div>
         </div>
         <p class="text-xs font-medium text-white truncate">
-          {{ datum.name }}
+          {{ sortSnapshotDatum[0].name }}
         </p>
-        <p class="text-xs text-gray-400">{{ datum.score }}</p>
+        <p class="text-xs text-gray-400">{{ sortSnapshotDatum[0].score }}</p>
+      </div>
+
+      <!-- Top 3 (Bronze) -->
+      <div v-if="sortSnapshotDatum[2]" class="text-center">
+        <div class="relative w-16 h-16 mx-auto mb-2">
+          <div
+            class="flex items-center justify-center w-full h-full rounded-full bg-linear-to-br from-orange-400 to-orange-700 border-orange-600/30"
+          >
+            <span class="text-sm font-bold text-white">{{
+              sortSnapshotDatum[2].name?.charAt(0)?.toUpperCase()
+            }}</span>
+          </div>
+          <div
+            class="absolute flex items-center justify-center w-8 h-8 -translate-x-1/2 bg-gray-900 border-2 border-orange-600 rounded-full -bottom-1 left-1/2"
+          >
+            <span class="text-xs font-bold text-orange-400">3</span>
+          </div>
+        </div>
+        <p class="text-xs font-medium text-white truncate">
+          {{ sortSnapshotDatum[2].name }}
+        </p>
+        <p class="text-xs text-gray-400">{{ sortSnapshotDatum[2].score }}</p>
       </div>
     </div>
 
     <!-- Rest of rankings (4-30 with scroll) -->
     <div
-      class="space-y-2 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800 pr-1"
+      class="space-y-2 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800 pr-1"
     >
       <div
         v-for="(datum, index) in sortSnapshotDatum.slice(3, 30)"

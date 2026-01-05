@@ -45,6 +45,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
   );
   const walletStore = useWalletStore();
+  const hydraStore = useHydraStore();
   const isAuthenticated = computed(() => !!wallet.value?.secrets?.rootKeyHex);
 
   const signIn = async (
@@ -67,7 +68,7 @@ export const useAuthStore = defineStore("auth", () => {
     const account = walletInstance.getAccount(0, 0);
     walletStore.setAccount(account);
     walletStore.setWallet(walletInstance);
-    await walletStore.buildFirstTx();
+    await hydraStore.buildFirstTx();
     
     wallet.value = {
       secrets: {

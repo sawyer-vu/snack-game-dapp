@@ -1,0 +1,24 @@
+{
+  "name": "Snack Game DApp - Play & Earn on Hydra",
+  "short_name": "Snack Game",
+  "description": "Play Snack Game on Hydra. Compete with players worldwide, earn rewards, and climb the leaderboard.",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#0033AD",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/"
+}

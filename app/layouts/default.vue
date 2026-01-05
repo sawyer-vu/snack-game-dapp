@@ -3,6 +3,7 @@ import { AppWallet, EmbeddedWallet, NETWORK_ID } from "@hydra-sdk/core";
 
 const authStore = useAuthStore();
 const walletStore = useWalletStore();
+const hydraStore = useHydraStore();
 const router = useRouter();
 
 onMounted(async () => {
@@ -21,7 +22,7 @@ onMounted(async () => {
     walletStore.setWallet(walletInstance);
     const account = walletInstance!.getAccount(0, 0);
     walletStore.setAccount(account);
-    await walletStore.buildFirstTx();
+    await hydraStore.buildFirstTx();
   }
 });
 </script>

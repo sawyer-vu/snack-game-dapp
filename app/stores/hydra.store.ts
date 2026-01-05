@@ -5,11 +5,13 @@ import {
   NETWORK_ID,
 } from "@hydra-sdk/core";
 import { buildTx } from "@/utils/tx-builder";
+
 interface DatumData {
   paymentKeyHex: string;
   name: string;
   score: number;
   numberOfPlays: number;
+  createdAt: string | null;
 }
 export const useHydraStore = defineStore("hydra-store", () => {
   const inlineDatum = ref<DatumData[]>([]);
@@ -96,7 +98,7 @@ export const useHydraStore = defineStore("hydra-store", () => {
           inputs: utxoParticipant,
           outputs: txOutputs,
           changeAddress: config.addressReward,
-          walletSign: walletParticipant,
+          walletSign: (cborHex: string) => walletParticipant.signTx(cborHex),
         });
 
         console.log("Transaction result:", tx);
@@ -115,7 +117,6 @@ export const useHydraStore = defineStore("hydra-store", () => {
       // Query latest snapshot
       await $bridge.querySnapshotUtxo();
       const arraySnapshotUtxo = await $bridge.snapshotUtxoArray();
-
       // Map UTxOs to get datum fields
       inlineDatum.value = arraySnapshotUtxo
         .map((utxo) => {
@@ -124,18 +125,19 @@ export const useHydraStore = defineStore("hydra-store", () => {
               DatumUtils.DatumSchema.Basic
             );
             const inlineDatumFields = JSON.parse(inlineDatumJson).fields;
-
+            console.log("Parsed inline datum fields:", inlineDatumFields);
             return {
               paymentKeyHex: inlineDatumFields[0],
               name: inlineDatumFields[1],
               score: inlineDatumFields[2],
               numberOfPlays: inlineDatumFields[3],
+              createdAt: inlineDatumFields[4] || null,
             };
           }
         })
         .filter(Boolean) as DatumData[];
 
-      console.log("Refreshed inline datum:", inlineDatum.value);
+      console.log("Refreshed inline datum:", inlineDatum.value.filter((datum) => datum.createdAt));
     } catch (error) {
       console.error("Error refreshing inline datum:", error);
     }

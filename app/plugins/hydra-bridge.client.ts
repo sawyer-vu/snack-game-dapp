@@ -27,6 +27,13 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   await initConnectHydraBridge();
 
+  hydraBridge.value?.events.on("onMessage", async (payload) => {
+    if (payload.tag === "SnapshotConfirmed") {
+      console.log("SnapshotConfirmed received, updating store...", payload);
+      await hydraStore.queryInlineDatum();
+    }
+  });
+
   // Provide bridge first, then query
   nuxtApp.provide("bridge", hydraBridge.value);
 
